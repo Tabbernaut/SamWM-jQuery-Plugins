@@ -12,20 +12,22 @@
 /*
  * Allows only valid characters to be entered into input boxes.
  * Note: fixes value when pasting via Ctrl+V, but not when using the mouse to paste
-  *      side-effect: Ctrl+A does not work, though you can still use the mouse to select (or double-click to select all)
+ *	  side-effect: Ctrl+A does not work, though you can still use the mouse to select (or double-click to select all)
  *
  * @name     numeric
- * @param    config      { decimal : "." , negative : true }
- * @param    callback     A function that runs if the number is not valid (fires onblur)
+ * @param    config		{ decimal : "." , negative : true }
+ * @param    callback		A function that runs if the number is not valid (fires onblur)
+ * @param    callbackKeyBlock	A function that runs whenever a keypress is disallowed (fires onkeypress)
  * @author   Sam Collett (http://www.texotela.co.uk)
  * @example  $(".numeric").numeric();
  * @example  $(".numeric").numeric(","); // use , as separator
  * @example  $(".numeric").numeric({ decimal : "," }); // use , as separator
  * @example  $(".numeric").numeric({ negative : false }); // do not allow negative values
  * @example  $(".numeric").numeric(null, callback); // use default values, pass on the 'callback' function
+ * @example  $(".numeric").numeric(null, null, callback); // use default values, no callback for onblur, pass on the 'callbackKeyBlock' function
  *
  */
-$.fn.numeric = function(config, callback)
+$.fn.numeric = function(config, callback, callbackKeyBlock)
 {
 	if(typeof config === 'boolean')
 	{
@@ -40,8 +42,10 @@ $.fn.numeric = function(config, callback)
 	var negative = (config.negative === true) ? true : false;
 	// callback function
 	callback = (typeof(callback) == "function" ? callback : function() {});
+	// callback function for disallowed keypresses
+	callbackKeyBlock = (typeof(callbackKeyBlock) == "function" ? callbackKeyBlock : function() {});
 	// set data and methods
-	return this.data("numeric.decimal", decimal).data("numeric.negative", negative).data("numeric.callback", callback).keypress($.fn.numeric.keypress).keyup($.fn.numeric.keyup).blur($.fn.numeric.blur);
+	return this.data("numeric.decimal", decimal).data("numeric.negative", negative).data("numeric.callback", callback).data("numeric.callbackKeyBlock", callbackKeyBlock).keypress($.fn.numeric.keypress).keyup($.fn.numeric.keyup).blur($.fn.numeric.blur);
 };
 
 $.fn.numeric.keypress = function(e)
@@ -134,6 +138,13 @@ $.fn.numeric.keypress = function(e)
 	{
 		allow = true;
 	}
+	
+	// callback for disallowed keypress
+	if (!allow)
+	{
+		var callback = $.data(this, "numeric.callbackKeyBlock");
+		callback.apply(this);
+	}
 	return allow;
 };
 
@@ -225,13 +236,13 @@ $.fn.numeric.keyup = function(e)
 $.fn.numeric.blur = function()
 {
 	var decimal = $.data(this, "numeric.decimal");
-	var callback = $.data(this, "numeric.callback");
 	var val = this.value;
 	if(val !== "")
 	{
 		var re = new RegExp("^\\d+$|^\\d*" + decimal + "\\d+$");
 		if(!re.exec(val))
 		{
+			var callback = $.data(this, "numeric.callback");
 			callback.apply(this);
 		}
 	}
